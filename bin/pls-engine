@@ -1,0 +1,243 @@
+#!/bin/bash
+# pls-engine: Core logic script for 'pls'
+# Converts natural language to shell commands using Ollama
+
+set -euo pipefail
+
+# --- Configuration ---
+CONFIG_DIR="$HOME/.config/pls"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+USER_PROMPT="$1"
+CURRENT_SHELL="${2:-bash}"
+
+# --- Colors and Animation ---
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+BLUE="\033[0;34m"
+MAGENTA="\033[0;35m"
+CYAN="\033[0;36m"
+NC="\033[0m" # No Color
+
+# Animation frames for the thinking indicator
+FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+
+# --- Functions ---
+
+debug() {
+    if [[ "${DEBUG:-}" == "1" ]]; then
+        echo -e "${YELLOW}[DEBUG]${NC} $*" >&2
+    fi
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $*" >&2
+}
+
+info() {
+    echo -e "${CYAN}[INFO]${NC} $*" >&2
+}
+
+# Function to create a default config file
+create_default_config() {
+    debug "Creating default config at $CONFIG_FILE"
+    mkdir -p "$CONFIG_DIR"
+
+    cat > "$CONFIG_FILE" << 'EOL'
+{
+  "model": "codellama:13b",
+  "ollama_url": "http://localhost:11434",
+  "temperature": 0.1,
+  "stream": true,
+  "max_tokens": 100,
+  "system_prompt": "You are a helpful shell command generator. Based on the user's natural language request, provide only the single, most appropriate shell command. Do not include explanations, markdown formatting, or any text other than the raw command itself.",
+  "shell_specific_prompts": {
+    "fish": "Generate Fish shell commands using Fish-specific syntax when appropriate (e.g., 'set' for variables, Fish-style conditionals).",
+    "bash": "Generate Bash shell commands using standard POSIX syntax and Bash-specific features when needed.",
+    "zsh": "Generate Zsh shell commands that can leverage Zsh-specific features and expansions when appropriate."
+  }
+}
+EOL
+}
+
+# Function to show animated thinking indicator
+show_thinking() {
+    local pid=$1
+    local delay=0.1
+    local i=0
+
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r${BLUE}${FRAMES[i]}${NC} Thinking..."
+        ((i = (i + 1) % ${#FRAMES[@]}))
+        sleep $delay
+    done
+    printf "\r\033[K" # Clear the line
+}
+
+# Function to stream response from Ollama
+stream_ollama_response() {
+    local model="$1"
+    local ollama_url="$2"
+    local prompt="$3"
+    local temperature="$4"
+
+    debug "Making request to $ollama_url with model $model"
+
+    # Create the JSON payload
+    local json_payload
+    json_payload=$(jq -n \
+        --arg model "$model" \
+        --arg prompt "$prompt" \
+        --argjson stream true \
+        --argjson temp "$temperature" \
+        '{model: $model, prompt: $prompt, stream: $stream, options: {temperature: $temp}}')
+
+    debug "JSON payload: $json_payload"
+
+    # Start the curl request in background and capture its PID
+    local response_file
+    response_file=$(mktemp)
+
+    {
+        curl -s "$ollama_url/api/generate" \
+            -H "Content-Type: application/json" \
+            -d "$json_payload" > "$response_file"
+    } &
+    local curl_pid=$!
+
+    # Show thinking animation while curl is running
+    show_thinking "$curl_pid"
+
+    # Wait for curl to complete
+    wait "$curl_pid"
+    local curl_exit_code=$?
+
+    if [[ $curl_exit_code -ne 0 ]]; then
+        error "Failed to connect to Ollama (exit code: $curl_exit_code)"
+        rm -f "$response_file"
+        return 1
+    fi
+
+    debug "Response file created: $response_file"
+
+    # Process the streaming response
+    local command_parts=()
+    local line_count=0
+
+    while IFS= read -r line; do
+        if [[ -z "$line" ]]; then
+            continue
+        fi
+
+        debug "Processing line: $line"
+
+        # Parse each JSON line
+        local response_part
+        response_part=$(echo "$line" | jq -r '.response // empty' 2>/dev/null || true)
+
+        if [[ -n "$response_part" ]]; then
+            command_parts+=("$response_part")
+            # Show streaming effect
+            printf "%s" "$response_part"
+            ((line_count++))
+        fi
+
+        # Check if this is the final chunk
+        local done
+        done=$(echo "$line" | jq -r '.done // false' 2>/dev/null || echo "false")
+        if [[ "$done" == "true" ]]; then
+            break
+        fi
+    done < "$response_file"
+
+    printf "\n" # New line after streaming
+
+    # Clean up temporary file
+    rm -f "$response_file"
+
+    # Combine all parts and clean the result
+    local full_command
+    full_command=$(printf "%s" "${command_parts[@]}")
+
+    # Clean up the command (remove code fences, extra whitespace, etc.)
+    full_command=$(echo "$full_command" | tr -d '`' | sed -e 's/^shell[[:space:]]*//' -e 's/^bash[[:space:]]*//' -e 's/^fish[[:space:]]*//' -e 's/^zsh[[:space:]]*//' | xargs)
+
+    debug "Final cleaned command: $full_command"
+    echo "$full_command"
+}
+
+# --- Main Logic ---
+
+# Check for dependencies
+if ! command -v jq &> /dev/null; then
+    error "jq is not installed. Please install it to continue."
+    exit 1
+fi
+
+if ! command -v curl &> /dev/null; then
+    error "curl is not installed. Please install it to continue."
+    exit 1
+fi
+
+if [[ -z "$USER_PROMPT" ]]; then
+    error "Usage: pls-engine "<your prompt>" [shell]"
+    exit 1
+fi
+
+debug "User prompt: $USER_PROMPT"
+debug "Current shell: $CURRENT_SHELL"
+
+# Ensure config file exists
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    info "Creating default configuration file..."
+    create_default_config
+fi
+
+# Load settings from config file
+MODEL=$(jq -r '.model' "$CONFIG_FILE")
+OLLAMA_URL=$(jq -r '.ollama_url' "$CONFIG_FILE")
+TEMPERATURE=$(jq -r '.temperature' "$CONFIG_FILE")
+SYSTEM_PROMPT=$(jq -r '.system_prompt' "$CONFIG_FILE")
+
+# Get shell-specific prompt if available
+SHELL_SPECIFIC_PROMPT=$(jq -r ".shell_specific_prompts.${CURRENT_SHELL} // empty" "$CONFIG_FILE")
+
+debug "Loaded config - Model: $MODEL, URL: $OLLAMA_URL, Temp: $TEMPERATURE"
+
+# Build the final prompt
+FINAL_PROMPT="$SYSTEM_PROMPT"
+if [[ -n "$SHELL_SPECIFIC_PROMPT" ]]; then
+    FINAL_PROMPT="$FINAL_PROMPT $SHELL_SPECIFIC_PROMPT"
+fi
+FINAL_PROMPT="$FINAL_PROMPT
+
+User request: $USER_PROMPT"
+
+debug "Final prompt: $FINAL_PROMPT"
+
+# Test Ollama connection
+if ! curl -s "$OLLAMA_URL/api/tags" > /dev/null; then
+    error "Cannot connect to Ollama at $OLLAMA_URL"
+    error "Make sure Ollama is running: ollama serve"
+    exit 1
+fi
+
+# Check if model exists
+if ! curl -s "$OLLAMA_URL/api/tags" | jq -r '.models[].name' | grep -q "^$MODEL$"; then
+    error "Model '$MODEL' not found. Available models:"
+    curl -s "$OLLAMA_URL/api/tags" | jq -r '.models[].name' | sed 's/^/  /' >&2
+    error "Pull the model with: ollama pull $MODEL"
+    exit 1
+fi
+
+# Generate the command using streaming
+info "Generating command for $CURRENT_SHELL..."
+SUGGESTED_COMMAND=$(stream_ollama_response "$MODEL" "$OLLAMA_URL" "$FINAL_PROMPT" "$TEMPERATURE")
+
+if [[ -z "$SUGGESTED_COMMAND" ]]; then
+    error "Failed to generate a command"
+    exit 1
+fi
+
+debug "Generated command: $SUGGESTED_COMMAND"
+echo "$SUGGESTED_COMMAND"
