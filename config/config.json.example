@@ -1,5 +1,5 @@
 {
-  "model": "codellama:13b",
+  "model": "gemma3:4b",
   "ollama_url": "http://localhost:11434",
   "temperature": 0.1,
   "stream": true,

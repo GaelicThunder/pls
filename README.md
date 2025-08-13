@@ -31,7 +31,7 @@ After a response is generated, you can edit it before pressing enter to execute 
 ### Prerequisites
 
 1. **Ollama**: Install from [ollama.ai](https://ollama.ai)
-2. **A code model**: Download a suitable model (e.g., `ollama pull codellama:13b`)
+2. **A code model**: Download a suitable model (e.g., `ollama pull gemma3:4b`)
 3. **jq**: JSON processor (`sudo pacman -S jq` on Arch Linux)
 
 ### Quick Install
@@ -114,7 +114,7 @@ The first time you run `pls`, it creates a configuration file at `~/.config/pls/
 
 ```json
 {
-  "model": "codellama:13b",
+  "model": "gemma3:4b",
   "ollama_url": "http://localhost:11434",
   "temperature": 0.1,
   "stream": true,
@@ -144,6 +144,7 @@ See [docs/configuration.md](docs/configuration.md) for detailed configuration op
 
 Any Ollama model that can generate code works well. Recommended models:
 
+- `gemma3:4b` - Faster and best, actually the default model
 - `codellama:13b` - Best balance of speed and accuracy
 - `codegemma:7b` - Faster, good for basic commands
 - `deepseek-coder:6.7b` - Excellent for complex shell scripting
@@ -163,8 +164,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 1. **"jq not found"**: Install jq with your package manager
 2. **"Connection refused"**: Make sure Ollama is running (`ollama serve`)
-3. **"Model not found"**: Pull the model first (`ollama pull codellama:13b`)
-4. **Slow responses**: Try a smaller model like `codegemma:7b`
+3. **"Model not found"**: Pull the model first (`ollama pull gemma3:4b`)
+4. **Slow responses**: Try a smaller model like `gemma3:4b`
 
 ### Debug Mode
 
