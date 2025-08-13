@@ -86,8 +86,12 @@ stream_response() {
   done < "$response_file"
 
   printf "\n" >&2  # Newline after stream finishes
+  if [ -z "$command" ]; then
+    error "No valid command generated. Raw response from Ollama:"
+    cat "$response_file" >&2
+  fi
   rm -f "$response_file"
-
+  
   # Clean and output the final command to stdout
   # This sed command performs multiple clean-up steps safely without destroying quotes:
   # 1. Removes all backticks (`).
