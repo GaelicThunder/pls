@@ -37,7 +37,7 @@ After a response is generated, you can edit it before pressing enter to execute 
 ### Quick Install
 
 ```bash
-git clone https://github.com/yourusername/pls.git
+git clone https://github.com/GaelicThunder/pls.git
 cd pls
 chmod +x install.sh
 ./install.sh
@@ -47,7 +47,7 @@ chmod +x install.sh
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/pls.git
+   git clone https://github.com/GaelicThunder/pls.git
    cd pls
    ```
 
