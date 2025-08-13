@@ -60,7 +60,9 @@ stream_response() {
     --argjson temp "$temp" \
     '{model: $model, prompt: $prompt, stream: $stream, options: {temperature: $temp}}')
 
-  local response_file=$(mktemp)
+  local response_file
+  response_file=$(mktemp)
+  # Run curl in the background to capture its PID
   curl -s "$url/api/generate" -d "$json_payload" > "$response_file" &
   local curl_pid=$!
 
@@ -68,23 +70,35 @@ stream_response() {
   wait "$curl_pid"
 
   local command=""
+  # Process the JSON stream from Ollama
   while IFS= read -r line; do
-    local part=$(echo "$line" | jq -r '.response // empty')
-    [ -n "$part" ] && {
-      printf "%s" "$part" >&2  # Stream to stderr
+    # Extract the response part from the JSON line
+    local part
+    part=$(echo "$line" | jq -r '.response // empty')
+    if [ -n "$part" ]; then
+      printf "%s" "$part" >&2  # Stream raw response to stderr for the user to see
       command+="$part"
-    }
-    local done=$(echo "$line" | jq -r '.done // false')
+    fi
+    # Check if the stream is done
+    local done
+    done=$(echo "$line" | jq -r '.done // false')
     [ "$done" = "true" ] && break
   done < "$response_file"
 
-  printf "\n" >&2  # Newline after stream
+  printf "\n" >&2  # Newline after stream finishes
   rm -f "$response_file"
 
-  # Clean and output to stdout
-  command=$(echo "$command" | tr -d '`' | sed -e 's/^shell//' -e 's/^bash//' -e 's/^fish//' -e 's/^zsh//' | xargs)
+  # Clean and output the final command to stdout
+  # This sed command performs multiple clean-up steps safely without destroying quotes:
+  # 1. Removes all backticks (`).
+  # 2. Removes common language prefixes (bash, fish, etc.) from the start.
+  # 3. Trims leading and trailing whitespace.
+  # This replaces the problematic `xargs` which strips quotes.
+  command=$(echo "$command" | sed -e 's/`//g' -e 's/^shell//' -e 's/^bash//' -e 's/^fish//' -e 's/^zsh//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  
   echo "$command"
 }
+
 
 # Main
 [ -z "$USER_PROMPT" ] && { error "Usage: pls-engine \"<prompt>\" [shell]"; exit 1; }
