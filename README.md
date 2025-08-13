@@ -1,12 +1,22 @@
-# pls
+<h1 align="center">
+<br>
+  pls
+<br>
+</h1>
 
-#### ✨ Natural language to shell commands using Ollama ✨
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
+<h3 align="center">📟 Natural language to shell commands using Ollama 📟</h3>
+ <p align="center">
+  <a href="https://github.com/GaelicThunder/pls">
+    <img alt="GitHub" src="https://img.shields.io/github/stars/GaelicThunder/pls?style=social" />
+  </a>
+    <a href="https://aur.archlinux.org/packages/pls-cli-git">
+  <img alt="AUR Package" src="https://img.shields.io/aur/version/pls-cli-git" />
+</a>
+ </p>
+ 
 ## What is this?
 
-`pls` is a lightweight CLI tool that converts natural language into shell commands using local Large Language Models via [Ollama](https://ollama.ai). Heavily inspired by [uwu](https://github.com/context-labs/uwu) (which now support custom providers, which make this 2 repo too similar but oh well). Unlike cloud-based alternatives, `pls` runs entirely on your machine, ensuring privacy and offline functionality.
+`pls` is a lightweight CLI tool that converts natural language into shell commands using local Large Language Models via [Ollama](https://ollama.ai). Heavily inspired by [uwu](https://github.com/context-labs/uwu) (which now support custom providers, which make this 2 repo too similar but oh well). Unlike cloud-based alternatives, `pls` runs entirely on your machine, ensuring privacy and offline functionality. It supports multiple shell types.
 
 ![output](https://github.com/user-attachments/assets/e2039f54-f579-47d6-84dc-e847392b0ad7)
 
