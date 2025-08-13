@@ -8,6 +8,8 @@
 
 `pls` is a lightweight CLI tool that converts natural language into shell commands using local Large Language Models via [Ollama](https://ollama.ai). Heavily inspired by [uwu](https://github.com/context-labs/uwu) (which now support custom providers, which make this 2 repo too similar but oh well). Unlike cloud-based alternatives, `pls` runs entirely on your machine, ensuring privacy and offline functionality.
 
+![output](https://github.com/user-attachments/assets/e2039f54-f579-47d6-84dc-e847392b0ad7)
+
 ```bash
 pls find all log files larger than 10MB
 # ↓ generates and suggests:
