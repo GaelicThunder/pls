@@ -82,6 +82,11 @@ stream_response() {
 
   show_thinking "$curl_pid"
   wait "$curl_pid"
+  
+  if first_line=$(head -n 1 "$response_file"); ollama_error=$(echo "$first_line" | jq -r '.error // empty'); [ -n "$ollama_error" ]; then
+    error "Ollama API error: $ollama_error"
+    return 1
+  fi
 
   local command=""
   # Process the JSON stream from Ollama
