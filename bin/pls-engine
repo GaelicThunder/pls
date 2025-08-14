@@ -3,6 +3,20 @@
 
 set -euo pipefail
 
+if [[ "${1:-}" == "--version" || "${1:-}" == "-v" ]]; then
+  VERSION_FILE="/usr/share/doc/pls-cli-git/VERSION"
+  if [[ -f "$VERSION_FILE" ]]; then
+    cat "$VERSION_FILE"
+  else
+    if command -v git &> /dev/null && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      git describe --tags --always --dirty
+    else
+      echo "Version info not available. Installed via AUR? Try 'pacman -Q pls-cli-git'"
+    fi
+  fi
+  exit 0
+fi
+
 CONFIG_DIR="$HOME/.config/pls"
 CONFIG_FILE="$CONFIG_DIR/config.json"
 USER_PROMPT="${1:-}"
