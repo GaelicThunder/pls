@@ -74,6 +74,9 @@ stream_response() {
     --argjson temp "$temp" \
     '{model: $model, prompt: $prompt, stream: $stream, options: {temperature: $temp}}')
 
+  debug "JSON Payload to Ollama:"
+  [ "${DEBUG:-}" = "1" ] && echo "$json_payload" | jq . >&2
+
   local response_file
   response_file=$(mktemp)
   # Run curl in the background to capture its PID
@@ -105,6 +108,9 @@ stream_response() {
   done < "$response_file"
 
   printf "\n" >&2  # Newline after stream finishes
+
+  debug "Raw command from model: '$command'"
+
   if [ -z "$command" ]; then
     error "No valid command generated. Raw response from Ollama:"
     cat "$response_file" >&2
@@ -122,6 +128,8 @@ stream_response() {
   echo "$command"
 }
 
+debug "User prompt received: '$USER_PROMPT'"
+debug "Shell context: $CURRENT_SHELL"
 
 # Main
 [ -z "$USER_PROMPT" ] && { error "Usage: pls-engine \"<prompt>\" [shell]"; exit 1; }
@@ -137,6 +145,10 @@ SYSTEM_PROMPT=$(jq -r '.system_prompt' "$CONFIG_FILE")
 SHELL_SPECIFIC=$(jq -r ".shell_specific_prompts.\"$CURRENT_SHELL\" // empty" "$CONFIG_FILE")
 
 FINAL_PROMPT="$SYSTEM_PROMPT $SHELL_SPECIFIC User request: $USER_PROMPT"
+
+debug "Model: $MODEL"
+debug "Ollama URL: $OLLAMA_URL"
+debug "Temperature: $TEMPERATURE"
 
 info "Generating command for $CURRENT_SHELL..."
 SUGGESTED_CMD=$(stream_response "$MODEL" "$OLLAMA_URL" "$FINAL_PROMPT" "$TEMPERATURE")
