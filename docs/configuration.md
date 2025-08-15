@@ -97,7 +97,6 @@ Some settings can be overridden with environment variables:
 ```bash
 export PLS_MODEL="llama3.1:8b"
 export PLS_TEMPERATURE="0.2"
-export DEBUG=1  # Enable debug output
 ```
 
 ## Troubleshooting
@@ -180,5 +179,5 @@ pls-engine "test command" 2>&1 | grep -i error
 Or enable debug mode:
 
 ```bash
-DEBUG=1 pls-engine "test command"
+pls-engine --debug "test command"
 ```

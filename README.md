@@ -183,7 +183,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Run with debug output:
 ```bash
-DEBUG=1 pls your command here
+pls --debug your command here
 ```
 
 ## Similar Projects
