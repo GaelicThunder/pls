@@ -1,21 +1,32 @@
 # pls integration for Bash
-pls() {
-    local user_prompt="$*"
 
-    if [[ -z "$user_prompt" ]]; then
-        echo "Usage: pls <your natural language command>" >&2
+pls() {
+    local debug_flag=""
+    local prompt_parts=()
+
+    for arg in "$@"; do
+        if [[ "$arg" == "--debug" ]]; then
+            debug_flag="--debug"
+        elif [[ "$arg" == "--version" || "$arg" == "-v" ]]; then
+            debug_flag="$arg"
+        else
+            prompt_parts+=("$arg")
+        fi
+    done
+
+    if [ ${#prompt_parts[@]} -eq 0 ]; then
+        echo "Usage: pls [--debug | --version] <your natural language command>" >&2
         return 1
     fi
 
-    # Call engine
+    local user_prompt="${prompt_parts[*]}"
+
     local suggested_cmd
-    suggested_cmd="$(pls-engine "$user_prompt" "bash")"
+    suggested_cmd="$(pls-engine "$debug_flag" "$user_prompt" "bash")"
 
     if [[ -n "$suggested_cmd" ]]; then
-        # Add to history
         history -s "$suggested_cmd"
 
-        # Edit command with readline
         echo
         local final_cmd="$suggested_cmd"
         read -e -p $'\e[32m>\e[0m ' -i "$suggested_cmd" final_cmd
@@ -25,7 +36,6 @@ pls() {
             eval "$final_cmd"
         fi
     else
-        echo "Error: No command generated" >&2
-        return 1
+        return 0
     fi
 }

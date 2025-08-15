@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # pls-engine: Streams to stderr, outputs single clean command to stdout
-
 set -euo pipefail
+
+_DEBUG_MODE=0
+if [[ "${1:-}" == "--debug" ]]; then
+  _DEBUG_MODE=1
+  shift
+fi
+
+debug() { [ "${_DEBUG_MODE}" -eq 1 ] && echo -e "\033[0;33m[DEBUG]\033[0m $*" >&2; }
 
 if [[ "${1:-}" == "--version" || "${1:-}" == "-v" ]]; then
   VERSION_FILE="/usr/share/doc/pls-cli-git/VERSION"
@@ -28,13 +35,11 @@ YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
 NC="\033[0m"
 
-debug() { [ "${DEBUG:-}" = "1" ] && echo -e "${YELLOW}[DEBUG]${NC} $*" >&2; }
 error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 info() { echo -e "${BLUE}[INFO]${NC} $*" >&2; }
 
 FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 
-# Default config values
 create_default_config() {
   mkdir -p "$CONFIG_DIR"
   cat > "$CONFIG_FILE" << EOL
@@ -65,7 +70,6 @@ show_thinking() {
 
 stream_response() {
   local model="$1" url="$2" prompt="$3" temp="$4"
-
   local json_payload
   json_payload=$(jq -n \
     --arg model "$model" \
@@ -73,13 +77,12 @@ stream_response() {
     --argjson stream true \
     --argjson temp "$temp" \
     '{model: $model, prompt: $prompt, stream: $stream, options: {temperature: $temp}}')
-
+  
   debug "JSON Payload to Ollama:"
-  [ "${DEBUG:-}" = "1" ] && echo "$json_payload" | jq . >&2
+  [ "${_DEBUG_MODE}" -eq 1 ] && echo "$json_payload" | jq . >&2
 
   local response_file
   response_file=$(mktemp)
-  # Run curl in the background to capture its PID
   curl -s "$url/api/generate" -d "$json_payload" > "$response_file" &
   local curl_pid=$!
 
@@ -92,23 +95,19 @@ stream_response() {
   fi
 
   local command=""
-  # Process the JSON stream from Ollama
   while IFS= read -r line; do
-    # Extract the response part from the JSON line
     local part
     part=$(echo "$line" | jq -r '.response // empty')
     if [ -n "$part" ]; then
-      printf "%s" "$part" >&2  # Stream raw response to stderr for the user to see
+      printf "%s" "$part" >&2
       command+="$part"
     fi
-    # Check if the stream is done
     local done
     done=$(echo "$line" | jq -r '.done // false')
     [ "$done" = "true" ] && break
   done < "$response_file"
 
-  printf "\n" >&2  # Newline after stream finishes
-
+  printf "\n" >&2
   debug "Raw command from model: '$command'"
 
   if [ -z "$command" ]; then
@@ -117,12 +116,6 @@ stream_response() {
   fi
   rm -f "$response_file"
   
-  # Clean and output the final command to stdout
-  # This sed command performs multiple clean-up steps safely without destroying quotes:
-  # 1. Removes all backticks (`).
-  # 2. Removes common language prefixes (bash, fish, etc.) from the start.
-  # 3. Trims leading and trailing whitespace.
-  # This replaces the problematic `xargs` which strips quotes.
   command=$(echo "$command" | sed -e 's/`//g' -e 's/^shell//' -e 's/^bash//' -e 's/^fish//' -e 's/^zsh//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
   
   echo "$command"
@@ -131,7 +124,6 @@ stream_response() {
 debug "User prompt received: '$USER_PROMPT'"
 debug "Shell context: $CURRENT_SHELL"
 
-# Main
 [ -z "$USER_PROMPT" ] && { error "Usage: pls-engine \"<prompt>\" [shell]"; exit 1; }
 command -v jq >/dev/null || { error "jq required"; exit 1; }
 command -v curl >/dev/null || { error "curl required"; exit 1; }
@@ -152,5 +144,4 @@ debug "Temperature: $TEMPERATURE"
 
 info "Generating command for $CURRENT_SHELL..."
 SUGGESTED_CMD=$(stream_response "$MODEL" "$OLLAMA_URL" "$FINAL_PROMPT" "$TEMPERATURE")
-
 echo "$SUGGESTED_CMD"
