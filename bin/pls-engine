@@ -2,6 +2,9 @@
 # pls-engine: Streams to stderr, outputs single clean command to stdout
 set -euo pipefail
 
+CONFIG_DIR="$HOME/.config/pls"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+
 _DEBUG_MODE=0
 if [[ "${1:-}" == "--debug" ]]; then
   _DEBUG_MODE=1
@@ -24,8 +27,6 @@ if [[ "${1:-}" == "--version" || "${1:-}" == "-v" ]]; then
   exit 0
 fi
 
-CONFIG_DIR="$HOME/.config/pls"
-CONFIG_FILE="$CONFIG_DIR/config.json"
 USER_PROMPT="${1:-}"
 CURRENT_SHELL="${2:-bash}"
 

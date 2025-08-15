@@ -2,17 +2,23 @@
 
 pls() {
     local debug_flag=""
+    local version_flag=""
     local -a prompt_parts
 
     for arg in "$@"; do
         if [[ "$arg" == "--debug" ]]; then
             debug_flag="--debug"
         elif [[ "$arg" == "--version" || "$arg" == "-v" ]]; then
-            debug_flag="$arg"
+            version_flag="$arg"
         else
             prompt_parts+=("$arg")
         fi
     done
+
+    if [[ -n "$version_flag" && ${#prompt_parts[@]} -eq 0 ]]; then
+        pls-engine "$version_flag"
+        return 0
+    fi
 
     if [[ ${#prompt_parts[@]} -eq 0 ]]; then
         echo "Usage: pls [--debug | --version] <your natural language command>" >&2
