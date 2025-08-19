@@ -26,17 +26,19 @@ pls() {
     fi
 
     local user_prompt="${prompt_parts[*]}"
-
     local suggested_cmd
-    suggested_cmd="$(pls-engine "$debug_flag" "$user_prompt" "bash")"
+    
+    if [[ -n "$debug_flag" ]]; then
+        suggested_cmd="$(pls-engine "$debug_flag" "$user_prompt" "bash")"
+    else
+        suggested_cmd="$(pls-engine "$user_prompt" "bash")"
+    fi
 
     if [[ -n "$suggested_cmd" ]]; then
         history -s "$suggested_cmd"
-
         echo
         local final_cmd="$suggested_cmd"
         read -e -p $'\e[32m>\e[0m ' -i "$suggested_cmd" final_cmd
-
         if [[ -n "$final_cmd" ]]; then
             history -s "$final_cmd"
             eval "$final_cmd"

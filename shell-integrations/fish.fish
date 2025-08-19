@@ -25,8 +25,13 @@ function pls --description "Natural language to shell command via Ollama"
     end
 
     set -l user_prompt (string join " " $prompt_parts)
-
-    set -l suggested_cmd (pls-engine $debug_flag "$user_prompt" "fish")
+    set -l suggested_cmd
+    
+    if test -n "$debug_flag"
+        set suggested_cmd (pls-engine "$debug_flag" "$user_prompt" "fish")
+    else
+        set suggested_cmd (pls-engine "$user_prompt" "fish")
+    end
 
     if test -n "$suggested_cmd"
         commandline -r ""

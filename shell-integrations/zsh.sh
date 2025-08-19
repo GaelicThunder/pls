@@ -26,17 +26,19 @@ pls() {
     fi
 
     local user_prompt="${(j: :)prompt_parts}"
-
     local suggested_cmd
-    suggested_cmd="$(pls-engine "$debug_flag" "$user_prompt" "zsh")"
+
+    if [[ -n "$debug_flag" ]]; then
+        suggested_cmd="$(pls-engine "$debug_flag" "$user_prompt" "zsh")"
+    else
+        suggested_cmd="$(pls-engine "$user_prompt" "zsh")"
+    fi
 
     if [[ -n "$suggested_cmd" ]]; then
         print -s -- "$suggested_cmd"
-
         echo
         local final_cmd="$suggested_cmd"
         vared -p "$(print -P '%F{green}>%f ')" final_cmd
-
         if [[ -n "$final_cmd" ]]; then
             print -s -- "$final_cmd"
             eval "$final_cmd"
